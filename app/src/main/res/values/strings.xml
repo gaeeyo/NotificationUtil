@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">NotificationUtil</string>
+    <string name="popupNotification">通知をポップアップ表示する</string>
+    <string name="popupNotificationSummary">通知をポップアップ表示します。ポップアップは自動的に消えます</string>
+    <string name="speechNotification">通知を読み上げる</string>
+    <string name="popupScrollLines">ポップアップの行数</string>
+    <string name="popupScrollInterval">1行スクロールする時間(ミリ秒)</string>
+    <string name="popupTextBackground">テキストの背景色</string>
+    <string name="popupTextColor">テキストの文字色</string>
+    <string name="readNotificationSetting">アプリが通知を読めるように設定する必要があります</string>
+</resources>
