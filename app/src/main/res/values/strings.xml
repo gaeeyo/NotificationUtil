@@ -8,4 +8,5 @@
     <string name="popupTextBackground">テキストの背景色</string>
     <string name="popupTextColor">テキストの文字色</string>
     <string name="readNotificationSetting">アプリが通知を読めるように設定する必要があります</string>
+    <string name="drawOverlaySetting">アプリが他のアプリの上に重ねて描画できるようにする必要があります</string>
 </resources>
