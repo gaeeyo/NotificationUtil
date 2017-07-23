@@ -39,11 +39,13 @@ fun testNotification(context: Context) {
     }
 
     val n = NotificationCompat.Builder(context)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_name)
             .setContentText("テスト通知のテキストです")
             .setContentTitle("テスト通知のタイトルです")
             .setTicker("テストの通知のティッカーです")
             .setAutoCancel(true)
+            .setOnlyAlertOnce(false)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setStyle(messagingStyle)
             .build()

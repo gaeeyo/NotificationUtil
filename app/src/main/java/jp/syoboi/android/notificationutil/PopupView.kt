@@ -6,10 +6,12 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.os.SystemClock
 import android.text.TextPaint
+import android.util.AttributeSet
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 
-class PopupView(context: Context?, val lineCount: Int, val scrollInterval: Long) : View(context) {
+class PopupView(context: Context?, val lineCount: Int, val scrollInterval: Long)
+    : View(context) {
 
     val SCROLL_ANIMATION_DURATION = 200
     val SCROLL_IP = DecelerateInterpolator()
