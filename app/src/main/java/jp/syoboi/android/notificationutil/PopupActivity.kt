@@ -21,7 +21,7 @@ class PopupActivity : Activity() {
 
         val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        popupView = PopupView(applicationContext, 4,
+        popupView = PopupView(applicationContext, 3,
                 if (BuildConfig.DEBUG) 1000 else 2000)
         popupView?.showBorder = true
 

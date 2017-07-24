@@ -6,8 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.PixelFormat
+import android.media.AudioManager
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.speech.tts.TextToSpeech
 import android.support.v4.app.NotificationCompat
 import android.util.Log
 import android.view.WindowManager
@@ -21,8 +23,14 @@ class NotificationListener : NotificationListenerService() {
         val ACTION_OVERLAY_CHANGED = _ACTION_BASE + ".overlay_changed"
     }
 
-    var popupView: PopupView? = null
     lateinit var prefs: Prefs
+
+    var popupView: PopupView? = null
+
+    var textToSpeech: TextToSpeech? = null
+    var ttsReady: Boolean = false
+    var ttsPendingMessages: ArrayList<CharSequence>? = null
+
 
     val mReceiver = object : BroadcastReceiver() {
         override fun onReceive(p0: Context?, p1: Intent?) {
@@ -42,11 +50,17 @@ class NotificationListener : NotificationListenerService() {
     }
 
     override fun onListenerConnected() {
+        if (BuildConfig.DEBUG) {
+            Log.i(TAG, "onListenerConnected")
+        }
         super.onListenerConnected()
         registerReceiver(mReceiver, IntentFilter().apply { ACTION_OVERLAY_CHANGED })
     }
 
     override fun onListenerDisconnected() {
+        if (BuildConfig.DEBUG) {
+            Log.i(TAG, "onListenerDisconnected")
+        }
         super.onListenerDisconnected()
         unregisterReceiver(mReceiver)
         closePopup()
@@ -55,20 +69,60 @@ class NotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         super.onNotificationPosted(sbn)
 
-        if (!prefs.get(BooleanValues.popupNotification)) {
-            return
-        }
-        
         val n: Notification = sbn?.notification ?: return
 
-        if (n.flags == 0 && n.sound == null) {
-            // 通知音を鳴らす設定の通知のみ扱う
+        if (BuildConfig.DEBUG) {
+            Log.i(TAG, "notification:${n}\nextras:${n.extras}\nticker:${n.tickerText}")
+        }
+
+        if (n.defaults and (Notification.DEFAULT_SOUND or Notification.DEFAULT_VIBRATE) == 0
+                && n.sound == null) {
+            // 通知音とバイブが両方とも鳴らない設定のものは無視
             return
         }
+
+        val popup = prefs.get(BooleanValues.popupNotification)
+        val speech = prefs.get(BooleanValues.speechNotification)
 
         val message = extractMessage(sbn) ?: return
         if (message.isNotEmpty()) {
-            onPopupMessage(message)
+            if (popup) {
+                onPopupMessage(message)
+            }
+            if (speech) {
+                onSpeechMessage(message)
+            }
+        }
+    }
+
+    fun onSpeechMessage(message: CharSequence) {
+
+
+        val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        if (am.isWiredHeadsetOn or am.isBluetoothA2dpOn or am.isBluetoothScoOn) {
+            if (textToSpeech == null) {
+                ttsReady = false
+                textToSpeech = TextToSpeech(this, object : TextToSpeech.OnInitListener {
+                    override fun onInit(p0: Int) {
+                        ttsReady = true
+                        ttsPendingMessages?.forEach {
+                            textToSpeech?.speak(it, TextToSpeech.QUEUE_ADD, null,
+                                    System.currentTimeMillis().toString())
+                        }
+                        ttsPendingMessages = null
+                    }
+                })
+            }
+            if (ttsReady) {
+                textToSpeech?.speak(message, TextToSpeech.QUEUE_ADD, null,
+                        System.currentTimeMillis().toString())
+            } else {
+                if (ttsPendingMessages == null) {
+                    ttsPendingMessages = ArrayList<CharSequence>()
+                }
+                ttsPendingMessages?.add(message)
+            }
         }
     }
 
@@ -77,13 +131,11 @@ class NotificationListener : NotificationListenerService() {
         popupView?.addLog(message)
     }
 
+
     fun ensurePopup() {
         if (popupView == null) {
 
-            val prefs = Prefs.get(this)
-
-            popupView = PopupView(this, prefs.get(IntValues.popupTextLines),
-                    prefs.get(IntValues.popupScrollInterval).toLong())
+            popupView = createPopupView(this)
             val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT,
                     LayoutParams.TYPE_SYSTEM_ALERT,

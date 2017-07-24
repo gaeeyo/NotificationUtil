@@ -63,3 +63,10 @@ fun startManageOverlayPermissionActivity(context: Activity) {
             Uri.parse("package:${context.getPackageName()}"));
     context.startActivityForResult(intent, 0)
 }
+
+fun createPopupView(context: Context):PopupView {
+    val prefs = Prefs.get(context)
+    val v = PopupView(context, prefs.get(IntValues.popupTextLines),
+            prefs.get(IntValues.popupScrollInterval).toLong())
+    return v
+}
