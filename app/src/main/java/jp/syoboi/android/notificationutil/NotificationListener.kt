@@ -9,7 +9,6 @@ import android.graphics.PixelFormat
 import android.media.AudioManager
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import android.speech.tts.TextToSpeech
 import android.support.v4.app.NotificationCompat
 import android.util.Log
 import android.view.WindowManager
@@ -27,16 +26,14 @@ class NotificationListener : NotificationListenerService() {
 
     var popupView: PopupView? = null
 
-    var textToSpeech: TextToSpeech? = null
-    var ttsReady: Boolean = false
-    var ttsPendingMessages: ArrayList<CharSequence>? = null
-
+    val ttsHelper = TtsHelper()
 
     val mReceiver = object : BroadcastReceiver() {
         override fun onReceive(p0: Context?, p1: Intent?) {
+            if (BuildConfig.DEBUG) Log.d(TAG, "onReceive intent:${p1}")
             val prefs = Prefs.get(this@NotificationListener)
             if (prefs.get(BooleanValues.popupNotification)) {
-                ensurePopup()
+                closePopup()
             } else {
                 closePopup()
             }
@@ -54,7 +51,7 @@ class NotificationListener : NotificationListenerService() {
             Log.i(TAG, "onListenerConnected")
         }
         super.onListenerConnected()
-        registerReceiver(mReceiver, IntentFilter().apply { ACTION_OVERLAY_CHANGED })
+        registerReceiver(mReceiver, IntentFilter(ACTION_OVERLAY_CHANGED ))
     }
 
     override fun onListenerDisconnected() {
@@ -96,35 +93,13 @@ class NotificationListener : NotificationListenerService() {
     }
 
     fun onSpeechMessage(message: CharSequence) {
-
-
         val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
         if (am.isWiredHeadsetOn or am.isBluetoothA2dpOn or am.isBluetoothScoOn) {
-            if (textToSpeech == null) {
-                ttsReady = false
-                textToSpeech = TextToSpeech(this, object : TextToSpeech.OnInitListener {
-                    override fun onInit(p0: Int) {
-                        ttsReady = true
-                        ttsPendingMessages?.forEach {
-                            textToSpeech?.speak(it, TextToSpeech.QUEUE_ADD, null,
-                                    System.currentTimeMillis().toString())
-                        }
-                        ttsPendingMessages = null
-                    }
-                })
-            }
-            if (ttsReady) {
-                textToSpeech?.speak(message, TextToSpeech.QUEUE_ADD, null,
-                        System.currentTimeMillis().toString())
-            } else {
-                if (ttsPendingMessages == null) {
-                    ttsPendingMessages = ArrayList<CharSequence>()
-                }
-                ttsPendingMessages?.add(message)
-            }
+            ttsHelper.speech(this, message)
         }
     }
+
 
     fun onPopupMessage(message: CharSequence) {
         ensurePopup()
@@ -157,8 +132,6 @@ class NotificationListener : NotificationListenerService() {
 
     fun extractMessage(sbn: StatusBarNotification): CharSequence? {
         val n = sbn.notification
-//        val template = n.extras.getString(NotificationCompat.EXTRA_TEMPLATE);
-//        Log.d(TAG, "template: ${template} " + NotificationCompat.MessagingStyle::class.java.name)
         var msg = n.tickerText
         if (msg.isNullOrBlank()) {
             val text = n.extras.getCharSequence(NotificationCompat.EXTRA_TEXT)
